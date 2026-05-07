@@ -10,14 +10,12 @@ abstract: >-
 authors:
   - family-names: "Bowman"
     given-names: "Eric"
-    orcid: "https://orcid.org/0009-0003-6792-0622"
+    orcid: "https://orcid.org/0009-0003-9171-7217"
     email: "eric.bowman@king.com"
     affiliation: "King, Berlin, Germany"
 version: "1.0.0"
 date-released: "2026-05-07"
-license:
-  - MIT
-  - CC-BY-4.0
+license: MIT
 repository-code: "https://github.com/ebowman/synchronization-paper-artifact"
 keywords:
   - "assembly flow shop"
@@ -32,7 +30,7 @@ preferred-citation:
   authors:
     - family-names: "Bowman"
       given-names: "Eric"
-      orcid: "https://orcid.org/0009-0003-6792-0622"
+      orcid: "https://orcid.org/0009-0003-9171-7217"
       email: "eric.bowman@king.com"
       affiliation: "King, Berlin, Germany"
   year: 2026

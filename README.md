@@ -121,5 +121,5 @@ from the original citation.
 ## Author
 
 Eric Bowman (King, Berlin, Germany) ·
-[ORCID 0009-0003-6792-0622](https://orcid.org/0009-0003-6792-0622) ·
+[ORCID 0009-0003-9171-7217](https://orcid.org/0009-0003-9171-7217) ·
 eric.bowman@king.com

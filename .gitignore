@@ -1,0 +1,34 @@
+# macOS
+.DS_Store
+
+# sbt / Scala
+target/
+project/target/
+project/project/
+lib_managed/
+src_managed/
+.bloop/
+.metals/
+.bsp/
+
+# IDEs
+.idea/
+.vscode/
+.idea_modules
+
+# Lean 4
+lean/.lake/
+lean/lake-packages/
+lean/build/
+
+# LaTeX build artifacts
+**/*.aux
+**/*.log
+**/*.out
+**/*.synctex.gz
+**/*.swp
+**/*.bbl
+**/*.bcf
+**/*.blg
+**/*.run.xml
+texput.log

@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use this software or the accompanying paper, please cite as below."
+type: software
+title: "Permutation-Schedule Dominance for Two-Stage Assembly Flow Shops with Divisible Work — reproducibility artifact"
+abstract: >-
+  Lean 4 formalization, Scala simulation, computational verification suite,
+  manuscript source, and claims registry supporting the paper
+  "Permutation-Schedule Dominance for Two-Stage Assembly Flow Shops with
+  Divisible Work" submitted to the European Journal of Operational Research.
+authors:
+  - family-names: "Bowman"
+    given-names: "Eric"
+    orcid: "https://orcid.org/0009-0003-6792-0622"
+    email: "eric.bowman@king.com"
+    affiliation: "King, Berlin, Germany"
+version: "1.0.0"
+date-released: "2026-05-07"
+license:
+  - MIT
+  - CC-BY-4.0
+repository-code: "https://github.com/ebowman/synchronization-paper-artifact"
+keywords:
+  - "assembly flow shop"
+  - "permutation schedule"
+  - "divisible work"
+  - "weighted completion time"
+  - "scheduling theory"
+  - "Lean 4"
+preferred-citation:
+  type: article
+  title: "Permutation-Schedule Dominance for Two-Stage Assembly Flow Shops with Divisible Work"
+  authors:
+    - family-names: "Bowman"
+      given-names: "Eric"
+      orcid: "https://orcid.org/0009-0003-6792-0622"
+      email: "eric.bowman@king.com"
+      affiliation: "King, Berlin, Germany"
+  year: 2026
+  journal: "European Journal of Operational Research"
+  notes: "Under review at the time of artifact release."

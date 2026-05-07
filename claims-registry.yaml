@@ -1,0 +1,154 @@
+# Claims Registry: Paper <-> Code <-> Proof Traceability
+#
+# Every mathematical claim in the paper is listed here with its verification.
+# CI checks reference claim IDs. Paper LaTeX uses CLAIM-ID comments.
+# When either paper or code changes, update this file and the corresponding tests.
+
+paper_version: "EJOR submission, May 2026 (extended unified version)"
+
+# ============================================================
+# Theorems and Lemmas (ORL paper)
+# ============================================================
+claims:
+  THM-1:
+    paper: orl
+    label: thm:main
+    statement: "Pointwise release-time domination"
+    verification:
+      - type: exhaustive
+        property: P4
+        code: simulation/shared/src/main/scala/Analysis.scala
+        field: pointwiseDominationHolds
+      - type: formal
+        code: lean/AssemblyFlowShop/WaterFilling.lean
+
+  COR-2:
+    paper: extended
+    label: cor:main
+    statement: >-
+      Permutation schedules are optimal for every regular non-decreasing
+      function of stage-2 completion times (Cmax, weighted completion time,
+      max lateness). Single paper-level corollary subsuming what were
+      previously stated separately as pointwise stage-2 domination and
+      Cmax permutation dominance.
+    depends_on: [THM-1, LEM-6, LEM-7]
+    verification:
+      - type: exhaustive
+        property: P4
+      - type: exhaustive
+        property: P1b
+        field: optimalIncludesSynchronized
+
+  LEM-4:
+    paper: orl
+    label: lem:capacity
+    statement: "Capacity bound W_i(s) <= k * r_{pi(s)}"
+    verification:
+      - type: formal
+        code: lean/AssemblyFlowShop/WaterFilling.lean
+
+  LEM-5:
+    paper: orl
+    label: lem:waterfill
+    statement: "Water-filling feasibility with ceiling bound"
+    verification:
+      - type: formal
+        code: lean/AssemblyFlowShop/WaterFillFeasibility.lean
+
+  LEM-6:
+    paper: extended
+    statement: "Stage-2 monotonicity (Lean-only; discussed informally in the Stage-2 monotonicity remark)"
+    verification:
+      - type: formal
+        code: lean/AssemblyFlowShop/Basic.lean
+
+  LEM-7:
+    paper: extended
+    statement: "FIFO optimality for Cmax at stage 2 (Lean-only; not stated as a labelled paper-level lemma)"
+    verification:
+      - type: formal
+        code: lean/AssemblyFlowShop/FIFOOptimality.lean
+      - type: exhaustive
+        note: "766,824 test pairs verified by TauPiTest"
+
+# ============================================================
+# Quantitative Claims (ORL Section 4)
+# ============================================================
+
+  QUANT-CONFIG-COUNT:
+    paper: orl
+    statement: "39 configurations"
+    value: 39
+    test: ClaimsVerificationSuite.configCount
+    notes: >
+      symmetric(10) + asymmetric(10) + valueWeighted(7) + heterogeneous(12) = 39.
+      Paper updated 2026-04-04 to match code.
+
+  QUANT-SCHEDULE-COUNT:
+    paper: orl
+    statement: "4,013,256 schedules"
+    value: 4013256
+    test: ClaimsVerificationSuite.totalScheduleCount
+    notes: >
+      Sum across all 39 configs with no skip limit (requires -Xmx8g).
+      Paper updated 2026-04-04 to match code.
+
+  QUANT-HOMO-COUNT:
+    paper: extended
+    statement: "27 homogeneous-work configurations, 3,846,136 schedules"
+    value_configs: 27
+    value_schedules: 3846136
+    notes: >
+      symmetric(10) + asymmetric(10) + valueWeighted(7) = 27.
+      Schedule count: 2,192,072 + 1,420,016 + 234,048 = 3,846,136.
+
+  QUANT-HETERO-COUNT:
+    paper: extended
+    statement: "12 heterogeneous-work configurations, 167,120 schedules"
+    value_configs: 12
+    value_schedules: 167120
+
+  QUANT-FIFO-PAIRS:
+    paper: orl
+    statement: "766,824 FIFO test pairs"
+    value: 766824
+    test: "TauPiTest (standalone, not in CI)"
+    status: NOT_IN_CI
+
+  QUANT-LEAN-VERSION:
+    paper: orl
+    statement: "Lean 4 (v4.29.0, Mathlib)"
+    file: lean/lean-toolchain
+    status: CHECK_MANUALLY
+
+# ============================================================
+# Extended Paper Claims (chain scheduling)
+# ============================================================
+
+  CHAIN-THM-8:
+    paper: extended
+    label: thm:chain-l2
+    statement: "Two-stage chain makespan domination"
+    verification:
+      - type: exhaustive
+        code: simulation/shared/src/main/scala/ChainAnalysis.scala
+        property: P5 (L=2 configs)
+    ci_step: chain-verification
+
+  CHAIN-PROP-9:
+    paper: extended
+    label: prop:chain-failure
+    statement: "Chain pointwise domination fails for L >= 3"
+    verification:
+      - type: counterexample
+        code: simulation/shared/src/main/scala/ChainAnalysis.scala
+        configs: makespan_ce_l3_n2, makespan_ce_large_gap
+
+  CONC-THM-10:
+    paper: extended
+    label: thm:concordant
+    statement: "Concordant flowtime domination for n=2"
+    verification:
+      - type: exhaustive
+        code: simulation/shared/src/main/scala/ConcordantTest.scala
+    ci_step: NOT_IN_CI

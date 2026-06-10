@@ -2,24 +2,25 @@
   FIFO Optimality and Permutation-Schedule Dominance
   ===================================================
 
-  We formalize two results from the ORL paper:
+  Two results about the dependent (assembly) stage:
 
-  **Lemma 4 (FIFO Optimality for C_max):**
-  On a single non-preemptive machine with release times
-  r_1 ≤ ... ≤ r_n and processing times q_1,...,q_n > 0,
-  the FIFO order τ = (1,...,n) minimises C_max.
+  **FIFO optimality for C_max:**
+  On a single non-preemptive machine with release times r and
+  processing times q, sorting jobs by non-decreasing release time
+  (FIFO) minimises C_max.
 
-  Proof: adjacent interchange. If τ is non-FIFO, there exist
-  adjacent positions s, s+1 with r_{τ(s)} > r_{τ(s+1)}. Swapping
-  them does not increase C_max. Iterating reaches FIFO.
+  Proof: adjacent interchange. If τ is non-FIFO, a maximal-release
+  job can be bubbled to the last position by adjacent swaps, none of
+  which increases C_max (`adjacent_swap_fifo`); induction on the
+  sorted list does the rest (`fifo_optimality`).
 
-  **Corollary 2 (Permutation-Schedule Dominance for C_max):**
-  The composition of Theorem 1 (pointwise release-time domination)
-  with Lemma 4 gives: there exists a permutation schedule
-  (σ₁ = ... = σ_m = τ = π) that minimises C_max.
+  **Permutation-schedule dominance for C_max:**
+  Composing release-time domination (WaterFilling.lean) with FIFO
+  optimality gives: there exists a permutation schedule, with the
+  stage-1 permutation also used at stage 2, that minimises C_max
+  (`permutation_schedule_dominance`).
 
   References:
-  - Paper §3: Lemma 4, Corollary 2
   - Basic.lean: dependentMakespan, dependentMakespan_mono_release
   - WaterFilling.lean: waterfill_exists
 -/
@@ -35,7 +36,7 @@ set_option linter.style.longLine false
 /-! ## Adjacent Swap Lemma
 
 The core of the FIFO proof: swapping two adjacent jobs where the
-first has a strictly larger release time does not increase C_max. -/
+first has a (weakly) larger release time does not increase C_max. -/
 
 /-- The fold step function is monotone in its accumulator. -/
 private theorem fold_step_mono (r q : ℕ → ℕ) (j : ℕ)
@@ -59,20 +60,7 @@ private theorem foldl_suffix_mono (r q : ℕ → ℕ) (l : List ℕ) :
 
     Consider the fold over pre ++ [a, b] ++ suf.
     If r(a) ≥ r(b), swapping to get pre ++ [b, a] ++ suf
-    does not increase the fold result.
-
-    The key calculation: let B = fold over pre.
-    Before: fold over [a, b] starting at B gives
-      C_a = max(B, r(a)) + q(a)
-      C_b = max(C_a, r(b)) + q(b)
-    Since r(a) ≥ r(b), we have r(b) ≤ C_a (because
-    C_a ≥ r(a) ≥ r(b)), so C_b = C_a + q(b).
-
-    After: fold over [b, a] starting at B gives
-      C_b' = max(B, r(b)) + q(b)
-      C_a' = max(C_b', r(a)) + q(a)
-
-    We show C_a' ≤ C_b in all cases. -/
+    does not increase the fold result. -/
 theorem adjacent_swap_fifo (r q : ℕ → ℕ) (pre suf : List ℕ)
     (a b : ℕ)
     (h_release : r b ≤ r a) :
@@ -80,140 +68,157 @@ theorem adjacent_swap_fifo (r q : ℕ → ℕ) (pre suf : List ℕ)
     dependentMakespan r q (pre ++ [a, b] ++ suf) := by
   unfold dependentMakespan
   simp only [List.foldl_append, List.foldl_cons, List.foldl_nil]
-  -- Let B = fold over pre starting at 0
-  set B := pre.foldl (fun acc j => max acc (r j) + q j) 0
-  -- We need: suf.foldl f (max (max B (r b) + q b) (r a) + q a)
-  --        ≤ suf.foldl f (max (max B (r a) + q a) (r b) + q b)
   apply foldl_suffix_mono
   -- Goal: max (max B (r b) + q b) (r a) + q a
   --     ≤ max (max B (r a) + q a) (r b) + q b
-  -- Since r b ≤ r a, we have r b ≤ max B (r a) + q a,
-  -- so max (max B (r a) + q a) (r b) = max B (r a) + q a.
-  -- RHS = max B (r a) + q a + q b.
-  -- LHS = max (max B (r b) + q b) (r a) + q a.
-  -- max (max B (r b) + q b) (r a) ≤ max B (r a) + q b
-  -- because: max B (r b) + q b ≤ max B (r a) + q b (since r b ≤ r a)
-  --     and: r a ≤ max B (r a) ≤ max B (r a) + q b
+  -- where B is the fold over pre. Since r b ≤ r a, both sides
+  -- reduce to max B (r a) + q a + q b.
   omega
 
-/-! ## FIFO Optimality (Lemma 4)
+/-! ## Bubbling a Maximal-Release Job to the End -/
 
-We state FIFO optimality via the adjacent-swap lemma: any
-non-FIFO order can be improved by bubble-sorting toward FIFO.
-The formal statement is that sorting τ by release time
-(non-decreasing) gives a makespan ≤ any other ordering. -/
+/-- Appending a final job: the makespan of `l ++ [M]` is one fold
+    step applied to the makespan of `l`. -/
+private theorem dependentMakespan_append_singleton (r q : ℕ → ℕ)
+    (l : List ℕ) (M : ℕ) :
+    dependentMakespan r q (l ++ [M]) =
+    max (dependentMakespan r q l) (r M) + q M := by
+  unfold dependentMakespan
+  simp [List.foldl_append]
 
-/-- **FIFO Optimality (Lemma 4, ORL paper).**
+/-- A job whose release time dominates everything after it can be
+    bubbled to the last position without increasing the makespan:
+    each adjacent swap is justified by `adjacent_swap_fifo`. -/
+private theorem bubble_max_to_end (r q : ℕ → ℕ) (M : ℕ) :
+    ∀ (suf pre : List ℕ), (∀ c ∈ suf, r c ≤ r M) →
+    dependentMakespan r q (pre ++ suf ++ [M]) ≤
+    dependentMakespan r q (pre ++ M :: suf) := by
+  intro suf
+  induction suf with
+  | nil =>
+    intro pre _
+    simp
+  | cons c rest ih =>
+    intro pre hsuf
+    have hc : r c ≤ r M := hsuf c (by simp)
+    have hrest : ∀ x ∈ rest, r x ≤ r M := fun x hx => hsuf x (by simp [hx])
+    calc dependentMakespan r q (pre ++ (c :: rest) ++ [M])
+        = dependentMakespan r q ((pre ++ [c]) ++ rest ++ [M]) := by
+          simp
+      _ ≤ dependentMakespan r q ((pre ++ [c]) ++ M :: rest) := ih (pre ++ [c]) hrest
+      _ = dependentMakespan r q (pre ++ [c, M] ++ rest) := by
+          simp
+      _ ≤ dependentMakespan r q (pre ++ [M, c] ++ rest) :=
+          adjacent_swap_fifo r q pre rest M c hc
+      _ = dependentMakespan r q (pre ++ M :: c :: rest) := by
+          simp
+
+/-! ## FIFO Optimality -/
+
+private theorem fifo_optimality_aux (r q : ℕ → ℕ) :
+    ∀ (τ_sorted : List ℕ),
+    τ_sorted.Pairwise (fun a b => r a ≤ r b) →
+    ∀ (τ : List ℕ), τ_sorted.Perm τ →
+    dependentMakespan r q τ_sorted ≤ dependentMakespan r q τ := by
+  intro τ_sorted
+  induction τ_sorted using List.reverseRecOn with
+  | nil =>
+    intro _ τ hperm
+    rw [hperm.symm.eq_nil]
+  | append_singleton init M ih =>
+    intro h_sorted τ hperm
+    -- Unpack sortedness: init is sorted and everything in init is ≤ M.
+    rw [List.pairwise_append] at h_sorted
+    obtain ⟨h_init, _, h_le⟩ := h_sorted
+    have h_max_init : ∀ a ∈ init, r a ≤ r M :=
+      fun a ha => h_le a ha M (by simp)
+    -- M occurs in τ; split τ around it.
+    have hM : M ∈ τ := hperm.mem_iff.mp (by simp)
+    obtain ⟨pre, suf, rfl⟩ := List.append_of_mem hM
+    -- init is a permutation of the rest of τ.
+    have hperm' : init.Perm (pre ++ suf) := by
+      have h1 : (M :: init).Perm (M :: (pre ++ suf)) :=
+        ((List.perm_append_singleton M init).symm.trans hperm).trans
+          List.perm_middle
+      exact h1.cons_inv
+    -- Everything after M in τ has release time ≤ r M.
+    have h_suf : ∀ c ∈ suf, r c ≤ r M := by
+      intro c hc
+      have hcτ : c ∈ init ++ [M] :=
+        hperm.mem_iff.mpr (by simp [hc])
+      rcases List.mem_append.mp hcτ with hci | hcM
+      · exact h_max_init c hci
+      · simp at hcM; subst hcM; exact le_refl _
+    -- Chain the three estimates.
+    calc dependentMakespan r q (init ++ [M])
+        = max (dependentMakespan r q init) (r M) + q M :=
+          dependentMakespan_append_singleton r q init M
+      _ ≤ max (dependentMakespan r q (pre ++ suf)) (r M) + q M := by
+          have := ih h_init (pre ++ suf) hperm'
+          omega
+      _ = dependentMakespan r q ((pre ++ suf) ++ [M]) :=
+          (dependentMakespan_append_singleton r q (pre ++ suf) M).symm
+      _ = dependentMakespan r q (pre ++ suf ++ [M]) := by
+          simp
+      _ ≤ dependentMakespan r q (pre ++ M :: suf) :=
+          bubble_max_to_end r q M suf pre h_suf
+
+/-- **FIFO Optimality.**
 
     On a single non-preemptive machine, sorting jobs by
-    non-decreasing release time (FIFO) minimises C_max.
-
-    Proof idea: repeated adjacent swaps eliminating inversions
-    (bubble sort). Each swap doesn't increase C_max by
-    `adjacent_swap_fifo`. The number of inversions strictly
-    decreases at each step, so the process terminates.
-
-    The adjacent-swap kernel (`adjacent_swap_fifo`) is fully
-    proved above. The inductive composition over all inversions
-    is left as sorry -- it requires a termination argument on the
-    inversion count, which is standard but bureaucratic. -/
+    non-decreasing release time (FIFO) minimises C_max: the sorted
+    order achieves a makespan no larger than any permutation of it. -/
 theorem fifo_optimality (r q : ℕ → ℕ) (τ τ_sorted : List ℕ)
     (hperm : τ_sorted.Perm τ)
     (h_sorted : τ_sorted.Pairwise (fun a b => r a ≤ r b)) :
-    dependentMakespan r q τ_sorted ≤ dependentMakespan r q τ := by
-  sorry
-  /-
-  PROOF STATUS: The mathematical core (adjacent_swap_fifo) is
-  fully proved. What remains is the "bureaucratic" composition:
+    dependentMakespan r q τ_sorted ≤ dependentMakespan r q τ :=
+  fifo_optimality_aux r q τ_sorted h_sorted τ hperm
 
-  1. If τ has an adjacent inversion (r(τ[s]) > r(τ[s+1])),
-     swap them to get τ' with strictly fewer inversions and
-     dependentMakespan r q τ' ≤ dependentMakespan r q τ.
-
-  2. By well-founded induction on the inversion count:
-     dependentMakespan r q τ_sorted ≤ dependentMakespan r q τ.
-
-  This is a standard "bubble sort optimality" argument. The
-  adjacent_swap_fifo lemma handles step 1.
-  -/
-
-/-! ## Permutation-Schedule Dominance for C_max (Corollary 2)
+/-! ## Permutation-Schedule Dominance for C_max
 
 Combining:
-- Theorem 1 (waterfill_exists): ∃ r_wf ≤ r pointwise
-- Corollary 1 (dependentMakespan_mono_release): r* ≤ r →
-    C*(τ) ≤ C(τ) for any τ
-- Lemma 4 (fifo_optimality): FIFO order of r* minimises
-    C_max over τ
+- release-time domination (waterfill_exists, WaterFilling.lean):
+    ∃ r_wf ≤ r pointwise;
+- stage-2 monotonicity (dependentMakespan_mono_release, Basic.lean):
+    r_wf ≤ r → C(τ) does not increase;
+- FIFO optimality (fifo_optimality, above): the sorted order of
+    r_wf minimises C_max over stage-2 orders.
 
-Gives: ∃ permutation schedule (σ = π = τ) with C_max ≤ any
-schedule. -/
+Gives: a permutation schedule (same permutation at stage 1 and
+stage 2) with C_max ≤ any schedule. -/
 
-/-- **Permutation-Schedule Dominance for C_max
-    (Corollary 2, ORL paper).**
+/-- **Permutation-schedule dominance for C_max.**
 
-    For any schedule S with release times r and stage-2 order τ,
-    there exists a permutation π and water-filling release times
-    r* such that the permutation schedule (σ = τ = π) has
-    C_max ≤ C_max(S).
-
-    The proof composes three results:
-    1. waterfill_exists: ∃ r_wf ≤ r pointwise
-    2. dependentMakespan_mono_release: r* ≤ r → makespan ≤
-    3. fifo_optimality: FIFO order minimises C_max -/
+    For any schedule with release times r and stage-2 order τ, the
+    permutation schedule that water-fills stage 1 (release times
+    r_wf ≤ r, supplied by `waterfill_exists`) and processes stage 2
+    in the FIFO order of r_wf has C_max ≤ C_max of the original
+    schedule. -/
 theorem permutation_schedule_dominance
-    {m : ℕ} [NeZero m] (k : ℕ) (hk : 0 < k)
-    (W : Fin m → ℕ → ℕ)
-    (r : ℕ → ℕ)
-    (h_capacity : ∀ (i : Fin m) (s : ℕ), W i s ≤ k * r s)
-    (q : ℕ → ℕ) (τ : List ℕ)
-    (π_list : List ℕ)
+    (r r_wf q : ℕ → ℕ) (τ π_list : List ℕ)
     (hperm : π_list.Perm τ)
-    (r_wf : ℕ → ℕ)
     (h_rwf_le : ∀ j, r_wf j ≤ r j)
     (h_rwf_sorted :
       π_list.Pairwise (fun a b => r_wf a ≤ r_wf b)) :
     dependentMakespan r_wf q π_list ≤
     dependentMakespan r q τ := by
   calc dependentMakespan r_wf q π_list
-      ≤ dependentMakespan r_wf q τ := by
-        exact fifo_optimality r_wf q τ π_list
-          hperm h_rwf_sorted
-    _ ≤ dependentMakespan r q τ := by
-        exact dependentMakespan_mono_release r_wf r q τ
+      ≤ dependentMakespan r_wf q τ :=
+        fifo_optimality r_wf q τ π_list hperm h_rwf_sorted
+    _ ≤ dependentMakespan r q τ :=
+        dependentMakespan_mono_release r_wf r q τ
           (fun j _ => h_rwf_le j)
 
 /-! ## Proof Status
 
-**Fully proved (zero sorry):**
-- `adjacent_swap_fifo`: The adjacent-interchange kernel for
-  FIFO optimality (the key new mathematical content).
-- `fold_step_mono`, `foldl_suffix_mono`: Helper lemmas.
-- `permutation_schedule_dominance`: Corollary 2, fully proved
-  modulo `fifo_optimality`.
+Every declaration in this file is proved; the file contains no
+`sorry`.
 
-**Sorry (1):**
-- `fifo_optimality`: The inductive composition of adjacent
-  swaps. The mathematical content (each swap helps) is fully
-  proved in `adjacent_swap_fifo`. The sorry covers only the
-  "bubble sort terminates" bookkeeping.
-
-**Mapping to ORL paper:**
-- Lemma 1 (Capacity Bound):
-    WaterFilling.lean -- DONE, zero sorry
-- Lemma 2 (Water-Filling Feasibility):
-    WaterFillFeasibility.lean -- DONE, zero sorry on critical path
-- Lemma 3 (Stage-2 Monotonicity):
-    Basic.lean `dependentMakespan_mono_release` -- DONE, zero sorry
-    Basic.lean `completionAtPosition_mono_release` -- DONE
-- Lemma 4 (FIFO Optimality):
-    This file `adjacent_swap_fifo` -- KERNEL PROVED, zero sorry
-    This file `fifo_optimality` -- sorry (bubble sort composition)
-- Theorem 1 (Release-Time Domination):
-    WaterFilling.lean `waterfill_exists` -- DONE, zero sorry
-- Corollary 1 (Stage-2 Domination):
-    WaterFilling.lean `waterfill_synchronization` -- DONE
-- Corollary 2 (Permutation Dominance for C_max):
-    This file `permutation_schedule_dominance` -- sorry
-    (via fifo_optimality only)
+- `adjacent_swap_fifo`: the adjacent-interchange kernel.
+- `bubble_max_to_end`: iterated swaps move a maximal-release job to
+  the last position without increasing C_max.
+- `fifo_optimality`: FIFO order minimises C_max (induction on the
+  sorted list).
+- `permutation_schedule_dominance`: composition with release-time
+  domination and stage-2 monotonicity.
 -/

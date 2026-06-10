@@ -6,15 +6,15 @@ abstract: >-
   Lean 4 formalization, Scala simulation, computational verification suite,
   manuscript source, and claims registry supporting the paper
   "Permutation-Schedule Dominance for Two-Stage Assembly Flow Shops with
-  Divisible Work" submitted to the European Journal of Operational Research.
+  Divisible Work" (under journal review).
 authors:
   - family-names: "Bowman"
     given-names: "Eric"
     orcid: "https://orcid.org/0009-0003-9171-7217"
     email: "eric.bowman@king.com"
     affiliation: "King, Berlin, Germany"
-version: "1.0.0"
-date-released: "2026-05-07"
+version: "1.1.0"
+date-released: "2026-06-10"
 license: MIT
 repository-code: "https://github.com/ebowman/synchronization-paper-artifact"
 keywords:
@@ -34,5 +34,4 @@ preferred-citation:
       email: "eric.bowman@king.com"
       affiliation: "King, Berlin, Germany"
   year: 2026
-  journal: "European Journal of Operational Research"
-  notes: "Under review at the time of artifact release."
+  notes: "Under journal review at the time of artifact release; preprint at doi:10.5281/zenodo.20075389."

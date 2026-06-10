@@ -4,7 +4,7 @@
 # CI checks reference claim IDs. Paper LaTeX uses CLAIM-ID comments.
 # When either paper or code changes, update this file and the corresponding tests.
 
-paper_version: "EJOR submission, May 2026 (extended unified version)"
+paper_version: "JoS Paper A, June 2026 (paper/jos/synchronization-jos.tex); extended unified version retained for Paper B"
 
 # ============================================================
 # Theorems and Lemmas (ORL paper)
@@ -45,6 +45,14 @@ claims:
     statement: "Capacity bound W_i(s) <= k * r_{pi(s)}"
     verification:
       - type: formal
+        code: lean/AssemblyFlowShop/CapacityBound.lean
+        note: >
+          capacity_bound_concrete derives the bound from the concrete
+          per-worker machine model (zero sorry); sync_release_le_concrete
+          composes it with the ceiling bound across m machines.
+          WaterFilling.lean contains the older abstract-level composition
+          where the bound is a hypothesis.
+      - type: formal
         code: lean/AssemblyFlowShop/WaterFilling.lean
 
   LEM-5:
@@ -53,7 +61,15 @@ claims:
     statement: "Water-filling feasibility with ceiling bound"
     verification:
       - type: formal
+        code: lean/AssemblyFlowShop/WaterFillAllocation.lean
+        note: >
+          waterfill_allocation_exists constructs the allocation explicitly
+          (round-robin residue classes) and proves divisions are nonnegative,
+          sum to each job's work, and achieve max load ceil(W/k) at every
+          position (zero sorry).
+      - type: formal
         code: lean/AssemblyFlowShop/WaterFillFeasibility.lean
+        note: "Arithmetic skeleton (ceiling/floor spread, ceiling growth)."
 
   LEM-6:
     paper: extended
@@ -68,6 +84,10 @@ claims:
     verification:
       - type: formal
         code: lean/AssemblyFlowShop/FIFOOptimality.lean
+        note: >
+          Fully proved (2026-06-10): adjacent_swap_fifo kernel,
+          bubble_max_to_end composition, and fifo_optimality by
+          induction on the sorted list. Zero sorry.
       - type: exhaustive
         note: "766,824 test pairs verified by TauPiTest"
 
@@ -94,19 +114,26 @@ claims:
       Paper updated 2026-04-04 to match code.
 
   QUANT-HOMO-COUNT:
-    paper: extended
+    paper: [extended, jos]
     statement: "27 homogeneous-work configurations, 3,846,136 schedules"
     value_configs: 27
     value_schedules: 3846136
     notes: >
       symmetric(10) + asymmetric(10) + valueWeighted(7) = 27.
       Schedule count: 2,192,072 + 1,420,016 + 234,048 = 3,846,136.
+      Cited in paper/jos/synchronization-jos.tex Section 4
+      (updated 2026-06-10 from stale 25/619,454; verified by full
+      sweep run 2026-06-10: 39 configs, 0 skipped, P4 = Y on all).
+      Parameter ranges in the sweep: n in 2..5, m in {2,3}, k in {2,3}.
 
   QUANT-HETERO-COUNT:
-    paper: extended
+    paper: [extended, jos]
     statement: "12 heterogeneous-work configurations, 167,120 schedules"
     value_configs: 12
     value_schedules: 167120
+    notes: >
+      Cited in paper/jos/synchronization-jos.tex Section 4
+      (updated 2026-06-10 from stale 11/83,976).
 
   QUANT-FIFO-PAIRS:
     paper: orl

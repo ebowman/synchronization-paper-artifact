@@ -1,6 +1,6 @@
 /-
-  The Capacity Bound from the Concrete Machine Model (Lemma 4)
-  ============================================================
+  The Capacity Bound from the Concrete Machine Model
+  ====================================================
 
   Earlier files (WaterFilling.lean) take the capacity bound
   W_i(s) ≤ k · r(π(s)) as a hypothesis. This file DERIVES it from
@@ -53,9 +53,9 @@ def finishTime (σ : Equiv.Perm (Fin n)) (d : Fin n → Fin k → ℕ)
 
 /-- Completion time of job `j` on the machine: the latest finish
     time among all workers at `j`'s position. (Workers assigned no
-    work on `j` are included; this matches the paper's Definition 3
-    and only makes the completion time, and hence the bound proved
-    here, larger.) -/
+    work on `j` are included; this matches the paper's definition
+    of completion times and only makes the completion time, and
+    hence the bound proved here, larger.) -/
 def completionTime (σ : Equiv.Perm (Fin n)) (d : Fin n → Fin k → ℕ)
     (j : Fin n) : ℕ :=
   Finset.univ.sup (fun ℓ => finishTime σ d ℓ (σ.symm j))
@@ -78,7 +78,7 @@ lemma finishTime_le_completionTime (σ : Equiv.Perm (Fin n))
   exact Finset.le_sup (f := fun ℓ => finishTime σ d ℓ p) (Finset.mem_univ ℓ)
 
 /-- **The capacity bound, derived from the concrete model
-    (paper Lemma 4, for one machine).**
+    (the paper's capacity lemma, for one machine).**
 
     Hypotheses:
     - `σ` is the machine's processing order, `d` its work division;
@@ -148,7 +148,7 @@ theorem capacity_bound_concrete
     Composing the concrete capacity bound with
     `ceil_div_le_of_le_mul`: the water-filling completion time
     ⌈W_i(s)/k⌉ at each position is at most r (π s). This is the
-    inequality used in the proof of the paper's Theorem 1. -/
+    inequality used in the proof of the paper's main theorem. -/
 theorem waterfill_release_le_concrete
     (hk : 0 < k)
     (σ π : Equiv.Perm (Fin n)) (d : Fin n → Fin k → ℕ) (r : Fin n → ℕ)
@@ -171,7 +171,7 @@ theorem waterfill_release_le_concrete
     release time for the job at position `s` — the max over machines
     of those completions — is at most `r (π s)`, the original
     release time. This is the inequality `r*_j ≤ r_j` in the proof
-    of the paper's Theorem 1, derived here entirely from the
+    of the paper's main theorem, derived here entirely from the
     concrete machine model. -/
 theorem sync_release_le_concrete {m : ℕ}
     (hk : 0 < k)

@@ -1,12 +1,12 @@
 /-
-  An Explicit Water-Filling Allocation (Lemma 5, constructive)
-  ============================================================
+  An Explicit Water-Filling Allocation
+  =====================================
 
   WaterFillFeasibility.lean proves the *arithmetic* skeleton of the
   water-filling lemma (ceiling/floor spread, ceiling growth). This
   file proves the lemma itself, constructively: it exhibits work
   divisions and shows they have the three properties the paper's
-  Lemma 5 claims.
+  water-filling lemma claims.
 
   The construction: number the work units of machine i consecutively
   along the job sequence π (units 0, 1, 2, … in ℕ). Worker ℓ takes
@@ -17,7 +17,7 @@
       d ℓ = load X' ℓ - load X ℓ is a nonnegative integer;
   (2) Σ_ℓ load X ℓ = X — the divisions sum to each job's work;
   (3) max_ℓ load X ℓ = ⌈X/k⌉ — the completion time at each
-      position s is ⌈W_i(s)/k⌉, as Lemma 5 states.
+      position s is ⌈W_i(s)/k⌉, as the water-filling lemma states.
 
   This is the allocation the paper's one-unit-at-a-time
   least-loaded procedure produces (with round-robin tie-breaking),
@@ -131,7 +131,7 @@ theorem load_zero_eq (hk : 0 < k) (X : ℕ) :
 
 /-- MAXIMUM LOAD: after `X` cumulative units the most-loaded worker
     holds exactly `⌈X/k⌉` units. This is the completion time the
-    paper's Lemma 5 claims at every position. -/
+    paper's water-filling lemma claims at every position. -/
 theorem sup_load (hk : 0 < k) (X : ℕ) :
     Finset.univ.sup (fun ℓ : Fin k => load k X ℓ) = X ⌈/⌉ k := by
   apply le_antisymm
@@ -142,7 +142,7 @@ theorem sup_load (hk : 0 < k) (X : ℕ) :
   · rw [← load_zero_eq hk X]
     exact Finset.le_sup (f := fun ℓ : Fin k => load k X ℓ) (Finset.mem_univ _)
 
-/-- **Lemma 5, constructive form.**
+/-- **The water-filling lemma, constructive form.**
 
     For any cumulative-work profile `W` (where `W s` is the total
     work of the first `s` jobs in the chosen permutation, so

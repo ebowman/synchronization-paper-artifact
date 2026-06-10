@@ -1,11 +1,19 @@
 /-
-  Water-Filling Feasibility (Lemma 7)
-  ====================================
+  Water-Filling Feasibility: Arithmetic Skeleton
+  ===============================================
 
-  We prove that the two-phase water-filling construction:
-  (1) preserves the load-balance invariant (max - min ≤ 1),
-  (2) ensures every worker gets at least 1 unit per job, and
-  (3) achieves maximum load ⌈W/k⌉ after cumulative work W.
+  The ceiling-division arithmetic behind the paper's water-filling
+  feasibility lemma:
+  (1) the load-balance invariant (max - min ≤ 1) is expressible at
+      every cumulative work level,
+  (2) when a job's work w is at least k, the maximum load grows by
+      at least 1 (so the two-phase construction can give every
+      worker a unit), and
+  (3) the maximum load after cumulative work W is ⌈W/k⌉.
+
+  The allocation itself is constructed explicitly, with all three
+  properties of the paper's water-filling lemma, in
+  WaterFillAllocation.lean.
 -/
 
 import Mathlib.Tactic
@@ -50,7 +58,19 @@ theorem ceilDiv_add_ge (a b w : ℕ) (hb : 0 < b) (hw : b ≤ w) :
     Not used in the main feasibility proof; included for completeness. -/
 theorem ceilDiv_add_le (a b w : ℕ) (hb : 0 < b) :
     ceilDiv (a + w) b ≤ ceilDiv a b + ceilDiv w b := by
-  sorry -- Subadditivity of ceiling division; not on critical path
+  unfold ceilDiv
+  -- a / b ≤ c ↔ a ≤ b * c + (b - 1), then bound each summand by
+  -- b times its own ceiling.
+  rw [Nat.div_le_iff_le_mul_add_pred hb, Nat.mul_add]
+  have ha : a ≤ b * ((a + b - 1) / b) := by
+    have h3 := Nat.div_add_mod (a + b - 1) b
+    have h2 : (a + b - 1) % b < b := Nat.mod_lt _ hb
+    omega
+  have hw : w ≤ b * ((w + b - 1) / b) := by
+    have h3 := Nat.div_add_mod (w + b - 1) b
+    have h2 : (w + b - 1) % b < b := Nat.mod_lt _ hb
+    omega
+  omega
 
 /-! ## The core feasibility results -/
 
@@ -80,7 +100,7 @@ theorem min_assignment_ge_one (k : ℕ) (hk : 0 < k)
 theorem total_work_correct (W w : ℕ) :
     W + w = W + w := rfl
 
-/-- THE MAIN FEASIBILITY THEOREM (Lemma 7).
+/-- THE MAIN FEASIBILITY THEOREM (arithmetic form).
 
     For k workers and any cumulative work W_prev, adding w ≥ k
     units via the two-phase construction:
@@ -102,14 +122,16 @@ theorem waterfill_step_full (k : ℕ) (hk : 0 < k)
 
 /-! ## Proof Status
 
-Fully proved (zero sorry on the critical path):
+Every declaration in this file is proved; the file contains no
+`sorry`.
+
 - `ceil_floor_spread`: ⌈a/b⌉ - ⌊a/b⌋ ≤ 1
 - `ceilDiv_add_ge`: ⌈(W+w)/b⌉ ≥ ⌈W/b⌉ + 1 when w ≥ b
+- `ceilDiv_add_le`: subadditivity of ceiling division
 - `invariant_preserved`: spread ≤ 1 maintained at each step
 - `min_assignment_ge_one`: max load increases by ≥ 1 at each step
 - `waterfill_step_full`: the complete single-step feasibility theorem
 
-One sorry (not on critical path):
-- `ceilDiv_add_le`: subadditivity of ceiling division.
-  Not used by any other theorem in the development.
+The explicit allocation realizing these bounds is constructed in
+WaterFillAllocation.lean.
 -/

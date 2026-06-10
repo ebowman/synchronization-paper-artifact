@@ -1,26 +1,27 @@
 /-
-  L-Stage Chain Dominance under Preemptive Priority
+  L-Stage Chains: Conditional Dominance Propagation
   ==================================================
 
-  We formalize the chain dominance theorem:
+  This file formalizes the *conditional* part of the chain-extension
+  analysis: if release-time domination holds at stage 0, it
+  propagates through every stage of an L-stage chain
+  (`chain_dominance_inductive`), because each stage's completion
+  times are monotone in its release times.
 
-  **Theorem (Chain Dominance under Preemptive Priority):**
-  For any L-stage chain and any schedule S, there exists a
-  preemptive priority schedule P with a single permutation π
-  such that C_L^P(π(i)) ≤ C_L^S(π(i)) for every job.
+  Unconditional chain dominance — that a single permutation schedule
+  pointwise-dominates any schedule for chains of length L ≥ 3 — is
+  FALSE: exhaustive search (ConjectureSearch.scala) produced
+  counterexamples, recorded at the end of this file. The two-stage
+  case (the paper's main theorem) is unaffected; it is proved in
+  Basic.lean, CapacityBound.lean, and WaterFillAllocation.lean.
 
-  The proof is by induction on L:
-  - Base case (L=1): Capacity bound + water-filling from WaterFilling.lean
-  - Inductive step: Sort by C_{L-1}^S, apply induction to stages 1..L-1,
-    then use priority-order completion and monotonicity at stage L.
-
-  Key lemma: under preemptive priority with ordering π, jobs complete
-  each stage in order: C_ℓ^P(π(1)) ≤ C_ℓ^P(π(2)) ≤ ... ≤ C_ℓ^P(π(n)).
+  Key lemma: under the max-plus recurrence with a fixed ordering,
+  jobs complete each stage in order:
+  C_ℓ(π(1)) ≤ C_ℓ(π(2)) ≤ ... ≤ C_ℓ(π(n)).
 
   References:
-  - Paper §4: Multi-stage chain extension
   - Basic.lean: foldl_max_add_mono, completionAtPosition_mono_release
-  - WaterFilling.lean: capacity_bound, ceil_div_le_of_le_mul
+  - WaterFilling.lean: ceil_div_le_of_le_mul
 -/
 
 import AssemblyFlowShop.Basic
@@ -264,57 +265,31 @@ theorem chain_dominance_inductive
     intro pos hpos
     exact ih (by omega) pos (by omega)
 
-/-! ## Single-Stage Makespan Invariance
+/-! ## Unconditional Chain Dominance: Status
 
-The makespan at any single stage under preemptive priority does not
-depend on the priority ordering—only on the arrival times and work.
-All k workers are always busy when work is available, so idle time
-depends only on the arrival schedule. This yields a short proof of
-two-stage chain makespan dominance (Theorem 9 in the paper). -/
-
-/-! ## Chain Dominance: Status
-
-**DISPROVED for L ≥ 3.** Exhaustive search (ConjectureSearch.scala)
-found 1,414 makespan counterexamples and 1,016 flowtime
-counterexamples over 46,656 configurations (L=3, n=2, k∈{2,3},
-work 1–6).
+The unconditional statement — for every L-stage chain and every
+schedule there is a single-permutation schedule whose completion
+times pointwise dominate — is **FALSE for L ≥ 3**, so no such
+theorem appears in this development. Exhaustive search
+(ConjectureSearch.scala) found 1,414 makespan counterexamples and
+1,016 flowtime counterexamples over 46,656 configurations
+(L=3, n=2, k∈{2,3}, work 1–6).
 
 Minimal makespan counterexample: L=3, n=2, k=2, w=[(1,2),(4,1),(1,2)].
-  - Sync best makespan: 4.0 (both orderings)
-  - Unsync [0,1]|[1,0]: makespan 3.5
-  - Gap: 0.5
+  - Best synchronized makespan: 4.0 (both orderings)
+  - Unsynchronized [0,1]|[1,0]: makespan 3.5
 
-The mechanism: preemption at stage 1 lets the lighter-at-stage-1 job
-pass through quickly, pairing heavier stage-2 work with an earlier
-arrival, reducing idle time downstream.
+The mechanism: at stage 1 the lighter-at-stage-1 job can pass
+through quickly, pairing heavier stage-2 work with an earlier
+arrival and reducing idle time downstream. No single permutation
+produces stage-0 release times that remain compatible with
+domination at all later stages once work inverts across stages.
 
-**TRUE for L ≤ 2 (makespan).** By single-stage makespan invariance,
-the ordering at the last stage does not affect makespan. For L=2,
-any unsynchronized (π₁,π₂) achieves the same makespan as (π₁,π₁),
-so the minimum over synchronized schedules equals the global minimum.
+**For L ≤ 2 (makespan)** the dominance does hold: the ordering at
+the last stage does not affect makespan (single-stage makespan
+invariance), so any unsynchronized (π₁,π₂) achieves the same
+makespan as (π₁,π₁).
 
-The conditional inductive result `chain_dominance_inductive` (proved
-above) remains correct: IF base-case release-time domination holds
-at stage 0, THEN it propagates through all stages. The failure is
-that no single permutation necessarily produces dominated release
-times at stage 0 that remain compatible with domination at all
-subsequent stages when work inverts across stages. -/
-
-/-- **Chain Dominance** — DISPROVED for L ≥ 3.
-
-    This statement is FALSE in general. Retained as sorry for the
-    conditional/L=2 case only. See ConjectureSearch.scala and
-    Proposition 10 in the paper for counterexamples. -/
-theorem chain_dominance (L n : ℕ) (hL : 0 < L) (hn : 0 < n)
-    (S_compl : ℕ → ℕ → ℕ)
-    (proc : ℕ → ℕ → ℕ)
-    (h_S_chain : ∀ (ℓ : ℕ) (i : ℕ), ℓ < L → i < n →
-      S_compl (ℓ + 1) i =
-      (List.range (i + 1)).foldl
-        (fun acc pos => max acc (S_compl ℓ pos) + proc (ℓ + 1) pos) 0) :
-    ∃ (release_P : ℕ → ℕ → ℕ),
-      (∀ i, i < n → release_P 0 i ≤ S_compl 0 i) ∧
-      (∀ (stage : ℕ), stage ≤ L → ∀ (i : ℕ), i < n →
-        chainCompletion release_P proc stage n i ≤
-        chainCompletion (fun ℓ => S_compl ℓ) proc stage n i) := by
-  sorry -- FALSE for L ≥ 3; see paper Proposition 10
+The conditional result `chain_dominance_inductive` above is the
+correct general statement: IF base-case release-time domination
+holds at stage 0, THEN it propagates through all stages. -/

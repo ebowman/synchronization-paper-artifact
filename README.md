@@ -4,7 +4,7 @@ Reproducibility artifact for the manuscript
 
 > Bowman, E. (2026). Permutation-Schedule Dominance for Two-Stage Assembly
 > Flow Shops with Divisible Work. Under journal review; preprint archived
-> at [doi:10.5281/zenodo.20075389](https://doi.org/10.5281/zenodo.20075389).
+> at [doi:10.5281/zenodo.20075388](https://doi.org/10.5281/zenodo.20075388).
 
 This repository contains:
 

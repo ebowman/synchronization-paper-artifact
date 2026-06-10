@@ -1,5 +1,7 @@
 import AssemblyFlowShop.Basic
+import AssemblyFlowShop.CapacityBound
 import AssemblyFlowShop.Chain
 import AssemblyFlowShop.FIFOOptimality
 import AssemblyFlowShop.WaterFilling
+import AssemblyFlowShop.WaterFillAllocation
 import AssemblyFlowShop.WaterFillFeasibility

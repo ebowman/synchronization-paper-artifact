@@ -6,6 +6,13 @@ Reproducibility artifact for the manuscript
 > Flow Shops with Divisible Work. Under journal review; preprint archived
 > at [doi:10.5281/zenodo.20075388](https://doi.org/10.5281/zenodo.20075388).
 
+> **Correction (June 2026):** the archived manuscript's conjecture that
+> makespan dominance extends to diamond and fork-join-fork-join
+> topologies is **false**, and the supporting zero-failure sweep claim
+> is withdrawn. See [CORRECTION.md](CORRECTION.md) for the
+> counterexamples and the complete characterization that replaces the
+> conjecture. The two-stage assembly results are unaffected.
+
 This repository contains:
 
 - The Lean 4 formalization of the main theorem and its supporting lemmas.

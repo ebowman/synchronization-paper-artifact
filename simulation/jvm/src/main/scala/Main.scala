@@ -29,6 +29,13 @@ object Main:
         val comparisons = RevenueAnalysis.analyze(allConfigs, maxSchedules)
         RevenueAnalysis.printReport(comparisons)
         return
+      case "price" =>
+        println("Price of Local Ordering Analysis Mode")
+        println()
+        val allConfigs = StandardConfigs.full
+        val priceResults = PriceOfAnarchy.analyze(allConfigs, maxSchedules)
+        PriceOfAnarchy.printReport(priceResults)
+        return
       case "chain" =>
         println("L-Stage Chain Scheduling Analysis")
         println()
@@ -56,7 +63,7 @@ object Main:
         if !passed then sys.exit(1)
         return
       case other =>
-        println(s"Unknown mode: $other. Use: baseline | quick | sym | asym | val | full | wip | chain | robust | dag | dag-verify")
+        println(s"Unknown mode: $other. Use: baseline | quick | sym | asym | val | full | wip | price | chain | robust | dag | dag-verify")
         sys.exit(1)
 
     println(s"Mode: $mode  (${configs.size} configuration(s), max schedules: ${maxSchedules})")

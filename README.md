@@ -20,11 +20,28 @@ This repository contains:
   on small instances and runs the full computational sweep.
 - A claims registry mapping every paper claim to its verification (code
   path, Lean module, or both).
-- The manuscript LaTeX source, bibliography, and compiled PDF.
+- The manuscript LaTeX source, bibliography, and compiled PDF (Paper A),
+  plus the Paper B/C manuscripts and annotated editions in `papers/`.
 
 A live web-app demonstration of the dominance principle is hosted
 separately at https://ebowman.github.io/prioritizer/ and is not part of
 this archive.
+
+## Papers
+
+The series now comprises three papers; preprints, manuscripts, and
+plain-language **annotated editions** are in [`papers/`](papers/) with
+their review status. Summary (none peer reviewed yet):
+
+| Paper | Result | Status |
+|---|---|---|
+| A | One shared order dominates pointwise (two-stage assembly, divisible work) | Submitted to the Journal of Scheduling; under review |
+| B | Exactly where dominance survives on deeper structures: the depth characterization | Manuscript; not yet submitted |
+| C | The price of NOT sharing the order: exact constants, the work-conservation dichotomy, stochastic completeness | Manuscript; not yet submitted |
+
+Public copies stay pinned to the submitted/working versions per
+publisher policy; corrections, if needed, arrive as new versions of
+this archive (see [CORRECTION.md](CORRECTION.md) for precedent).
 
 ## How to cite
 

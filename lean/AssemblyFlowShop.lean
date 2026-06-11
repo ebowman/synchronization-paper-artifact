@@ -2,6 +2,8 @@ import AssemblyFlowShop.Basic
 import AssemblyFlowShop.CapacityBound
 import AssemblyFlowShop.Chain
 import AssemblyFlowShop.FIFOOptimality
+import AssemblyFlowShop.MakespanLowerBound
+import AssemblyFlowShop.PriceOfAnarchy
 import AssemblyFlowShop.WaterFilling
 import AssemblyFlowShop.WaterFillAllocation
 import AssemblyFlowShop.WaterFillFeasibility

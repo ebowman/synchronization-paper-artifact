@@ -1,0 +1,785 @@
+% amsthm must be loaded before the class: sn-jnl defines its theorem
+% styles (thmstyleone/two/three) inside an \@ifpackageloaded{amsthm}
+% guard evaluated at class-load time.
+\RequirePackage{amsthm}
+\documentclass[sn-mathphys,NameDate]{sn-jnl}
+
+%% ============================================================
+%% PAPER C (JoS candidate) — drafted 2026-06-11.
+%%
+%% Source of record: paper/poa/notes.md (PoA-1..5, hardened
+%% 2026-06-11 pm) and paper/stochastic/notes.md (S1, S2). Every
+%% theorem stated here is proved in those notes and cross-checked
+%% against the exhaustive sweep (PriceOfAnarchy.scala, 39 configs);
+%% the two bracketing results are machine-checked in Lean 4
+%% (lean/AssemblyFlowShop/MakespanLowerBound.lean and
+%% PriceOfAnarchy.lean, zero sorry).
+%%
+%% Numbering map (paper <-> notes):
+%%   Thm 1  <-> Fact 0 + S1(a)            (exact optimum)
+%%   Cor 2  <-> S1(c)                     (stochastic, fixed order)
+%%   Thm 3  <-> S2                        (stochastic completeness)
+%%   Thm 4  <-> PoA-1                     (full anarchy, makespan)
+%%   Thm 5  <-> PoA-2                     (work-conserving, makespan)
+%%   Thm 6  <-> PoA-4                     (full anarchy, flowtime)
+%%   Thm 7  <-> PoA-5                     (work-conserving, flowtime)
+%%   Prop 8 <-> PoA-3                     (WCT unbounded)
+%% ============================================================
+
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{amsthm}
+\usepackage{mathrsfs}
+\usepackage{xcolor}
+\usepackage{textcomp}
+\usepackage{manyfoot}
+\usepackage{booktabs}
+
+\theoremstyle{thmstyleone}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{thmstylethree}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{thmstyletwo}
+\newtheorem{remark}[theorem]{Remark}
+
+\raggedbottom
+
+\begin{document}
+
+\title[The Price of Local Ordering]{The Price of Local Ordering in
+Two-Stage Assembly Flow Shops}
+
+\author*[1]{\fnm{Eric} \sur{Bowman}}\email{eric.bowman@king.com}
+
+\affil[1]{\orgname{King}, \orgaddress{\city{Berlin}, \country{Germany}}}
+
+\abstract{In the divisible-work two-stage assembly flow shop,
+permutation schedules---one job order shared by every machine---%
+dominate pointwise, so adopting a shared order is never worse. This
+paper quantifies the converse: how much can abandoning the shared
+order cost? In the fluid homogeneous model we first pin the optimum
+exactly: every schedule satisfies $k\,C_{\max} \ge W + w_{\max}$,
+and the synchronized schedule attains it under \emph{every} job
+order; consequently, under arbitrarily distributed random work, a
+fixed shared order---chosen with no foresight---stochastically
+dominates every scheduling policy on makespan, and the permutation
+class is stochastically complete for all regular objectives. Against
+this exact baseline the price of local ordering is sharp: arbitrary
+per-machine orders combined with a downstream stage that may hold
+capacity idle for a preferred job cost exactly
+$2W/(W+w_{\max}) \to 2$ on makespan, while \emph{any}
+work-conserving downstream stage---regardless of its processing
+order---caps the price at $2 - 1/m$, where $m$ is the number of
+stage-1 machines; both constants are tight. The same dichotomy
+governs total flowtime, with tight constants $3$ and $3 - 2/m$; for
+weighted completion time no constant-factor ceiling exists. The
+structural conclusion is that the expensive downstream behavior is
+\emph{work-withholding}, not misordering: a stage that idles while
+released work waits forfeits as much again as all upstream
+misalignment combined. Every constant is verified by exhaustive
+enumeration over the instance family of the companion paper, where
+the worst cases match the theory exactly, and the two bracketing
+results are formalized in Lean~4.}
+
+\keywords{assembly flow shop, permutation schedule, divisible work,
+price of anarchy, work conservation, stochastic scheduling}
+
+\pacs[MSC Classification]{90B35}
+
+\maketitle
+
+%% ============================================================
+\section{Introduction}
+\label{sec:intro}
+
+Dominance theorems are one-sided. For the two-stage assembly flow
+shop with divisible work---$m$ parallel stage-1 machines of $k$
+identical workers feeding a single assembly stage of $k$ workers---%
+for every schedule there is a \emph{permutation schedule}, with one
+job order shared by all stage-1 machines, that completes every job
+at the assembly stage no later \citep{bowmanA}. A companion paper
+maps where such dominance survives on deeper stage structures
+\citep{bowmanB}. These results say that coordinating on a shared
+order is \emph{never worse}. They are silent on the question any
+adopter of the policy actually asks: how much worse is it \emph{not}
+to coordinate?
+
+This paper answers that question exactly, in the fluid
+(real-divisible) homogeneous form of the model. Three groups of
+results.
+
+\emph{First, the baseline is the true optimum} (Section~\ref{sec:opt}).
+Every schedule---any per-machine orders, any work divisions, any
+downstream discipline, preemptive or not, idle or not---satisfies
+\[
+  k \, C_{\max} \;\ge\; W + w_{\max},
+\]
+where $W$ is the total work and $w_{\max}$ the largest job, and the
+synchronized schedule attains this bound under \emph{every} shared
+order $\pi$ (Theorem~\ref{thm:optimum}). Two consequences follow.
+Under arbitrarily distributed random work---any joint law---a fixed
+shared order, chosen before any work is known, is pathwise
+makespan-optimal, hence stochastically dominant over every policy
+including clairvoyant ones: for the date the whole portfolio of jobs
+lands, foresight is worth nothing and the choice of shared order is
+worth nothing; only \emph{sharedness} matters
+(Corollary~\ref{cor:fixed-order}). And the pointwise dominance
+theorem of \citet{bowmanA} couples, realization by realization, into
+a stochastic completeness statement: no policy beats the permutation
+class on any regular objective in any stochastic sense
+(Theorem~\ref{thm:completeness}). All prices below are therefore
+measured against the exact optimum, not against a possibly
+suboptimal synchronized baseline.
+
+\emph{Second, the price of local ordering on makespan is an exact
+dichotomy} (Section~\ref{sec:makespan}). If every stage-1 machine
+chooses its own order and the downstream stage may \emph{withhold}
+work---idle while released work waits, as a stage does when it
+insists on processing in a preferred order whose next job has not
+yet arrived---the worst-case makespan ratio is exactly
+$2W/(W+w_{\max})$, approaching~$2$ (Theorem~\ref{thm:poa-full}).
+If instead the downstream stage is \emph{work-conserving}---never
+idle while released work is unfinished, but otherwise free to
+process in any order whatsoever---the price drops to $2 - 1/m$,
+and this is tight even against a clairvoyant downstream
+(Theorem~\ref{thm:poa-wc}). The proof of the upper bound never uses
+the downstream \emph{order}; only non-idleness. The structural
+conclusion, which we believe is the practically important one, is
+that for makespan the expensive downstream sin is withholding, not
+misordering: a downstream stage that holds capacity idle for its
+preferred job forfeits as much again as all upstream misalignment
+combined.
+
+\emph{Third, the same dichotomy governs flowtime, and no ceiling
+exists for weighted completion time}
+(Sections~\ref{sec:flowtime}--\ref{sec:wct}). For equal works the
+total-flowtime price is exactly $(3n+1)/(n+3) \to 3$ under full
+anarchy and $3 - 2/m$ under a work-conserving downstream, both
+tight. For weighted completion time the price is unbounded:
+concentrating value on one small job and ordering it locally
+multiplies the weighted objective by $\Theta(W/w_{\max})$.
+
+Every constant above is exact at finite sizes in a way that can be
+checked by brute force, and we have checked it: over the
+39-configuration exhaustive enumeration family of \citet{bowmanA}
+(roughly $4.0 \times 10^{6}$ schedules), with the unsynchronized
+population split by downstream discipline, the worst cases agree
+with the theory to the digit, including two structural predictions
+--- the two downstream classes must coincide once $m \ge n$, and the
+withholding class must be empty at $n = 2$
+(Section~\ref{sec:verification}). The two bracketing results
+(Theorem~\ref{thm:optimum}'s lower bound, and the universal upper
+bound behind Theorem~\ref{thm:poa-full}) are additionally formalized
+in Lean~4 with no unproven steps.
+
+\subsection{Related work}
+
+The question belongs to the price-of-anarchy tradition of
+\citet{koutsoupias1999}: compare a coordinated optimum against the
+worst outcome of uncoordinated choices. Our setting differs from
+game-theoretic scheduling in that we do not model incentives or
+equilibria; ``anarchy'' here is simply the absence of a shared
+order, which is how the phenomenon presents in the motivating
+applications (portfolios of cross-team initiatives; multi-stage
+processing pipelines). The two-stage assembly flow shop originates
+with \citet{lee1993} and \citet{potts1995}, who proved permutation
+dominance and approximation results in the unit-capacity case; see
+\citet{hariri1997} for exact methods and \citet{bowmanA} for the
+divisible-work generalization and the literature between.
+
+The constant $2 - 1/m$ of Theorem~\ref{thm:poa-wc} has the same
+form as Graham's bound for list scheduling on $m$ identical
+machines \citep{graham1966,graham1979}, and the resemblance is not
+coincidental: both results bound the damage of arbitrary orderings
+by a busy-period argument in which work conservation is the only
+property used. The settings are different---Graham's $m$ counts
+parallel machines executing the jobs, our $m$ counts upstream
+machines feeding an assembly stage, and our ratio is measured
+against an exactly known optimum---but the mechanism, that
+non-idleness alone buys a factor-$(2-1/m)$ guarantee, appears to be
+the same phenomenon in two guises. The stochastic results connect
+to the classical observation that simple index policies retain
+optimality under uncertainty \citep{rothkopf1966,smith1956,
+pinedo2016}; Corollary~\ref{cor:fixed-order} is an extreme instance
+in which the optimal policy requires no distributional information
+at all. Divisible (malleable) work is surveyed by
+\citet{drozdowski2009}.
+
+%% ============================================================
+\section{Model and policy classes}
+\label{sec:model}
+
+There are $n$ jobs; job $j$ requires $w_j > 0$ units of work on
+each of $m$ stage-1 machines and $w_j$ units on a single stage-2
+(assembly) machine. Every machine has $k$ identical unit-rate
+workers. Work is divisible: a machine that devotes all $k$ workers
+to one job processes it at rate $k$. Write
+$W = \sum_j w_j$ and $w_{\max} = \max_j w_j$. The
+\emph{assembly constraint}: job $j$ may not be processed at stage~2
+before all $m$ stage-1 machines have completed it; the time this
+happens is $j$'s \emph{availability} $a_j$. All jobs are present at
+time zero. This is the homogeneous fluid form of the model of
+\citet{bowmanA}; the integer-divisible form used there for the
+pointwise theorem appears here only in
+Theorem~\ref{thm:completeness} and in the computational section.
+
+A schedule is \emph{team-sequential} if every machine processes one
+job at a time at full rate $k$, stage-1 machines without inserted
+idleness. (Stage-1 idleness and unbalanced work divisions can only
+increase availabilities and are briefly discussed after each upper
+bound; the lower bound of Theorem~\ref{thm:optimum} holds with no
+restriction at all.) Within team-sequential schedules we distinguish
+the downstream discipline:
+
+\begin{definition}[Policy classes]\label{def:classes}
+A team-sequential schedule is:
+\begin{itemize}
+\item \emph{synchronized} if all stage-1 machines and the stage-2
+machine process the jobs in one common order $\pi$;
+\item \emph{work-conserving downstream} if the stage-2 machine is
+never idle while some released job is unfinished---its processing
+order is otherwise arbitrary;
+\item \emph{work-withholding downstream} if it processes the jobs
+back-to-back in some fixed preferred order, each job starting as
+soon as the stage is free \emph{and} the job is available---so the
+stage idles exactly when its order's next job has not yet arrived,
+even while other released work waits. (This is the behavior of a
+stage that enforces a priority list internally; it is the only
+inserted idleness we allow downstream, and the enumeration model of
+Section~\ref{sec:verification} matches it.)
+\end{itemize}
+\emph{Upstream anarchy} means the stage-1 machines use arbitrary,
+possibly different orders. \emph{Full anarchy} means upstream
+anarchy with a work-withholding downstream.
+\end{definition}
+
+Objectives are functions of the stage-2 completion vector
+$(C_j)_{j}$: makespan $C_{\max} = \max_j C_j$, total flowtime
+$\sum_j C_j$, and weighted completion time $\sum_j v_j C_j$ for
+non-negative values $v_j$.
+
+%% ============================================================
+\section{The exact optimum, deterministically and stochastically}
+\label{sec:opt}
+
+\begin{theorem}[The optimum, and its order-independence]
+\label{thm:optimum}
+\mbox{}
+\begin{enumerate}
+\item[(a)] Every schedule---team-sequential or not, with arbitrary
+work divisions, inserted idleness, and downstream discipline,
+preemptive or not---satisfies
+$k\,C_{\max} \ge W + w_{\max}$.
+\item[(b)] For every order $\pi$, the synchronized team-sequential
+schedule with order $\pi$ has
+$C_{\max} = (W + w_{\max})/k$.
+\end{enumerate}
+Hence the optimal makespan is exactly $(W+w_{\max})/k$, attained by
+the shared order---\emph{any} shared order.
+\end{theorem}
+
+\begin{proof}
+(a) Let $M$ be a job of maximal work and let $a = a_M$ be its
+availability; fix one stage-1 machine that completes $M$ at time
+$a$ (if several, any). By time $a$ that machine has processed at
+most $a k$ units of work, of which $w_{\max}$ belong to $M$. A job
+is eligible for stage~2 only when complete on \emph{all} machines,
+in particular on this one, so the total work of jobs other than $M$
+available by time $a$ is at most $a k - w_{\max}$, and stage~2 can
+have completed at most that much by time $a$. At least
+$W - (a k - w_{\max})$ units of stage-2 work remain at time $a$,
+processed at rate at most $k$:
+\[
+C_{\max} \;\ge\; a + \frac{W - a k + w_{\max}}{k}
+\;=\; \frac{W + w_{\max}}{k},
+\]
+independent of $a$. The argument uses only capacity counting; it is
+indifferent to work divisions, idleness, preemption, and the number
+of machines.
+
+(b) Under the shared order $\pi$, stage~1 completes the job at
+position $s$ at time $S_s/k$ where
+$S_s = \sum_{t \le s} w_{\pi(t)}$. Writing $F_s$ for its stage-2
+completion and $M_s = \max_{t\le s} w_{\pi(t)}$, induction on $s$
+gives $F_s = (S_s + M_s)/k$: indeed
+$F_s = \max(S_s, \, S_{s-1} + M_{s-1})/k + w_{\pi(s)}/k
+= (S_{s-1} + \max(M_{s-1}, w_{\pi(s)}))/k + w_{\pi(s)}/k
+= (S_s + M_s)/k$. At $s = n$ this is $(W + w_{\max})/k$ for every
+$\pi$.
+\end{proof}
+
+\begin{remark}[Lean formalization]\label{rem:lean}
+Part (a) is machine-checked in Lean~4 over the concrete
+integer-divisible machine model of \citet{bowmanA}, with stage~2
+abstracted by a cumulative-progress structure whose axioms
+(progress capped by the work, zero before release, total rate at
+most $k$) are satisfied by every physical execution; the formal
+statement, $k\,T \ge W + w_M$ for \emph{every} job $M$, is
+correspondingly stronger than (a). The formalization also revealed
+that the choice of machine in the proof is immaterial: any machine
+bounds the released work, because every completion lies below the
+availability. The development has no unproven steps and uses only
+the standard axioms.
+\end{remark}
+
+The optimum being attained by every shared order has a stochastic
+consequence that we state in full generality.
+
+\begin{corollary}[A fixed shared order is stochastically optimal
+for makespan]\label{cor:fixed-order}
+Let the works $(W_1,\dots,W_n)$ be random with an arbitrary joint
+distribution, and fix any order $\pi$ in advance. Then, pathwise,
+the synchronized schedule with order $\pi$ achieves
+$C_{\max} = (W + W_{\max})/k \le C_{\max}(S)$ for every scheduling
+policy $S$, including policies with full knowledge of the
+realization. In particular the fixed shared order stochastically
+dominates every policy on makespan.
+\end{corollary}
+
+\begin{proof}
+Apply Theorem~\ref{thm:optimum} realization by realization: (b)
+gives the value of the fixed-order schedule, (a) bounds every
+competitor below by the same value.
+\end{proof}
+
+For objectives beyond makespan a single fixed order no longer
+suffices, but the \emph{class} of shared-order schedules remains
+unbeatable, again under arbitrary randomness. The following
+statement is in the integer-divisible model of \citet{bowmanA},
+whose pointwise theorem it couples; it is the formal sense in which
+all prices in this paper are measured against an optimum that
+stochastic work cannot dislodge.
+
+\begin{theorem}[Stochastic completeness of the permutation class]
+\label{thm:completeness}
+Let the works have an arbitrary joint distribution and let $S$ be
+any scheduling policy, possibly randomized and clairvoyant. There
+is a works-measurable permutation-schedule policy $S^*$ with
+$C_j(S^*) \le C_j(S)$ for every job $j$, almost surely.
+Consequently, for every coordinatewise-monotone objective $f$,
+$f(C(S^*)) \le f(C(S))$ almost surely, and no policy beats the
+permutation class in expectation, in any quantile, or in the usual
+stochastic order, for any regular objective.
+\end{theorem}
+
+\begin{proof}
+The construction of \citet{bowmanA} maps each realization of the
+works and of $S$'s schedule to a permutation schedule dominating it
+pointwise; the permutation used is obtained by sorting the
+realized availabilities, so the map is measurable (there are
+finitely many orders, and completion times are measurable in the
+works). Composing $S$ with this map yields $S^*$; the domination is
+pointwise on the same probability space, i.e.\ a coupling, and all
+claimed comparisons follow.
+\end{proof}
+
+\begin{remark}
+Theorem~\ref{thm:completeness} is existential in the order, which
+may depend on the realization. Corollary~\ref{cor:fixed-order} shows
+that for makespan the dependence vanishes. Whether a fixed
+\emph{value-ordered} permutation is optimal in expectation for
+weighted completion time under exchangeable works---the natural
+analogue of weighted-shortest-expected-processing-time results
+\citep{rothkopf1966}---is open; see Section~\ref{sec:discussion}.
+\end{remark}
+
+%% ============================================================
+\section{The price of local ordering: makespan}
+\label{sec:makespan}
+
+\begin{theorem}[Full anarchy doubles the schedule, exactly]
+\label{thm:poa-full}
+Over team-sequential schedules with upstream anarchy and a
+work-withholding downstream,
+\[
+\sup_{\text{instances, schedules}}
+\frac{C_{\max}}{(W+w_{\max})/k} \;=\;
+\sup_{\text{instances}} \frac{2W}{W + w_{\max}} \;=\; 2,
+\]
+with the inner supremum attained for every instance with $m \ge 2$:
+no team-sequential schedule exceeds $2W/k$, and for every instance
+some unsynchronized schedule reaches it.
+\end{theorem}
+
+\begin{proof}
+\emph{Upper bound.} Stage-1 machines are work-conserving and
+process at rate $k$, so every machine finishes all its work at
+$W/k$; hence $a_j \le W/k$ for every $j$. A downstream stage that
+processes its jobs back-to-back in any order $\sigma$, waiting only
+for availabilities, satisfies the max-plus recursion
+$F_{\sigma(s)} = \max(F_{\sigma(s-1)}, a_{\sigma(s)}) +
+w_{\sigma(s)}/k$, whence by induction
+$C_{\max} \le \max_j a_j + W/k \le 2W/k$.
+
+\emph{Lower bound.} Fix any job $J$. Let stage-1 machine~1 process
+$J$ last (so $a_J = W/k$) and machine~2 use any different order
+(so the schedule is unsynchronized). Let the downstream stage
+process $J$ \emph{first}: it idles until $W/k$, then has all $W$
+units to do with no further idleness, finishing at exactly $2W/k$.
+Against the optimum $(W+w_{\max})/k$ of
+Theorem~\ref{thm:optimum} the ratio is $2W/(W+w_{\max})$, which
+tends to $2$ as $w_{\max}/W \to 0$.
+\end{proof}
+
+\begin{remark}
+The upper bound is also machine-checked in Lean~4 at the
+release-time interface (makespan at most the largest availability
+plus the total downstream work, for every downstream order), along
+with the availability bound and computed witnesses for the smallest
+anti-aligned instance. With unbalanced work divisions the
+\emph{lower} bound only improves for the adversary; the sweep of
+Section~\ref{sec:verification} shows split badness stacking on top
+of the ordering price exactly where divisions are not forced
+balanced.
+\end{remark}
+
+The construction above needs the downstream stage to \emph{wait}
+for $J$. The next theorem shows this is the only way to get
+anywhere near a factor of two.
+
+\begin{theorem}[Work conservation caps the price at $2 - 1/m$]
+\label{thm:poa-wc}
+Over team-sequential schedules with upstream anarchy and ANY
+work-conserving downstream discipline,
+\[
+C_{\max} \;\le\; \Bigl(2 - \frac{1}{m}\Bigr)\frac{W}{k}
++ \frac{w_{\max}}{k},
+\]
+and the constant is tight: for equal works $w$ and $m \mid n$ there
+are stage-1 orders under which \emph{every} downstream
+discipline---work-conserving, withholding, or clairvoyant---has
+$C_{\max} \ge (2 - 1/m)\,nw/k + w/k$. Hence the price of upstream
+anarchy under a work-conserving downstream is exactly $2 - 1/m$
+asymptotically.
+\end{theorem}
+
+\begin{proof}
+\emph{Upper bound.} Let $t_1$ be the last instant stage~2 is idle
+before $C_{\max}$ (if stage~2's work is complete at its last idle
+instant, then $C_{\max}$ is at most the last availability, at most
+$W/k$, and we are done). At $t_1$, work conservation means every
+available job is already finished at stage~2, so the remaining
+stage-2 work is at most $W - w(A(t_1))$, where $A(t)$ is the set of
+jobs available by $t$ and $w(\cdot)$ sums their works; stage~2 is
+busy at rate $k$ on $[t_1, C_{\max}]$, giving
+$C_{\max} \le t_1 + (W - w(A(t_1)))/k$.
+
+Since stage~2 idles at $t_1$ with some unfinished job not yet
+available, some stage-1 machine is still busy; stage-1 machines
+have no upstream and are work-conserving, so that machine has
+processed exactly $t_1 k \le W$. Every still-busy machine $i$ has
+processed exactly $t_1 k$ units, of which at most $w_{\max}$ sit in
+its single in-progress job, so its set $F_i(t_1)$ of finished jobs
+satisfies $w(F_i(t_1)) \ge t_1 k - w_{\max}$ (machines already done
+satisfy this trivially). A job is available iff finished on all $m$
+machines, so by inclusion--exclusion for the work measure,
+\[
+w(A(t_1)) = w\Bigl(\bigcap_i F_i(t_1)\Bigr)
+\;\ge\; \sum_i w(F_i(t_1)) - (m-1)W
+\;\ge\; m(t_1 k - w_{\max}) - (m-1)W .
+\]
+Set $T^* = (m-1)W/(mk) + w_{\max}/k$. If $t_1 \le T^*$ then
+$C_{\max} \le t_1 + W/k \le (2-1/m)W/k + w_{\max}/k$. If
+$t_1 \ge T^*$ then
+$C_{\max} \le t_1(1-m) + (mW + m\,w_{\max})/k$, which is decreasing
+in $t_1$ and equals $(2-1/m)W/k + w_{\max}/k$ at $t_1 = T^*$.
+
+\emph{Lower bound (rotation construction).} Equal works $w$,
+$m \mid n$. Let machine $i$ process the jobs in the cyclic rotation
+of $(1,\dots,n)$ by $(i-1)n/m$ positions. The $m$ rotation offsets
+are evenly spaced, so job $j$'s positions across the machines form
+the set $\{(j \bmod (n/m)) + r\,n/m + 1 : r = 0,\dots,m-1\}$; its
+\emph{worst} position is at least $(m-1)n/m + 1$. Hence no job is
+available before $T_0 = ((m-1)n/m + 1)\,w/k$, and stage~2---however
+scheduled---must process all $W = nw$ units after $T_0$:
+$C_{\max} \ge T_0 + nw/k = (2 - 1/m)\,nw/k + w/k$. Against the
+optimum $(n+1)w/k$ the ratio tends to $2 - 1/m$. (For $m \nmid n$,
+rotating by $\lfloor n/m \rfloor$ degrades the constant by
+$O(w/k)$.)
+\end{proof}
+
+\begin{remark}[The dichotomy]\label{rem:dichotomy}
+The upper bound of Theorem~\ref{thm:poa-wc} never refers to the
+downstream \emph{order}; non-idleness is the only property used. So
+for makespan the downstream behaviors split into exactly two
+classes: any work-conserving stage, even one that ignores
+priorities entirely, is protected at $2 - 1/m$; only a
+work-withholding stage---one that holds capacity idle for its
+preferred job---reaches the full price of
+Theorem~\ref{thm:poa-full}. With two upstream machines the numbers
+are stark: upstream misalignment alone costs at most $50\%$;
+downstream withholding doubles it. In operational terms, enforcing
+a priority order \emph{inside} a downstream stage is precisely a
+withholding discipline whenever the preferred job has not yet
+arrived, and it forfeits as much again as all upstream misalignment
+combined. The resemblance of $2 - 1/m$ to Graham's list-scheduling
+bound \citep{graham1966} is discussed in
+Section~\ref{sec:intro}; both are busy-period consequences of work
+conservation alone.
+\end{remark}
+
+%% ============================================================
+\section{The price of local ordering: flowtime}
+\label{sec:flowtime}
+
+For flowtime we take equal works $w$ (so $W = nw$) and a
+\emph{non-preemptive} one-job-at-a-time downstream stage; the
+spacing step below fails under preemptive interleaving, whose
+constant we conjecture is the same
+(Section~\ref{sec:discussion}). The synchronized flowtime is
+$\sum_s (s+1)w/k = n(n+3)w/(2k)$ by
+Theorem~\ref{thm:optimum}(b), and it is optimal for equal works:
+the earliest stage-2 completion is at least $2w/k$ (the first job
+needs $w/k$ at each stage), and the non-preemptive downstream
+completes jobs at least $w/k$ apart, so every schedule has
+$C_{(s)} \ge (s+1)w/k$.
+
+\begin{theorem}[Full anarchy triples flowtime, exactly]
+\label{thm:poa-flow}
+Over team-sequential schedules with a non-preemptive downstream,
+for equal works,
+\[
+\sup \frac{\sum_j C_j}{n(n+3)w/(2k)} \;=\; \frac{3n+1}{n+3}
+\;\longrightarrow\; 3 ,
+\]
+the supremum over upstream anarchy with a withholding downstream,
+attained for every $n$ when $m \ge 2$.
+\end{theorem}
+
+\begin{proof}
+\emph{Upper bound.} Stage~2 processes one job at a time, each
+taking $w/k$, so the sorted completions satisfy
+$C_{(s+1)} \ge C_{(s)} + w/k$; with
+$C_{(n)} = C_{\max} \le 2nw/k$ (Theorem~\ref{thm:poa-full}),
+$C_{(s)} \le (n+s)w/k$ and
+$\sum_j C_j \le (3n^2+n)\,w/(2k)$ for \emph{every} team-sequential
+schedule. The ratio to $n(n+3)w/(2k)$ is $(3n+1)/(n+3)$.
+
+\emph{Lower bound.} In the construction of
+Theorem~\ref{thm:poa-full}'s lower bound, stage~2 idles until
+$nw/k$ and then completes one job per $w/k$: completions are
+exactly $(n+s)w/k$ for $s = 1,\dots,n$, meeting the upper bound
+term by term.
+\end{proof}
+
+\begin{theorem}[Work conservation caps the flowtime price at
+$3 - 2/m$]\label{thm:poa-flow-wc}
+Under the hypotheses of Theorem~\ref{thm:poa-flow} but with any
+work-conserving downstream, for equal works and $m \mid n$,
+\[
+\sum_j C_j \;\le\;
+\Bigl(\tfrac{3}{2} - \tfrac{1}{m}\Bigr)\frac{n^2 w}{k} + O(n),
+\]
+and the rotation construction attains
+$\sum_j C_j = (\tfrac{3}{2} - \tfrac{1}{m})\,n^2 w/k + O(n)$ under
+every downstream discipline. The price is exactly $3 - 2/m$
+asymptotically.
+\end{theorem}
+
+\begin{proof}
+\emph{Upper bound.} By Theorem~\ref{thm:poa-wc},
+$C_{(n)} \le ((2-1/m)n + 1)\,w/k$; spacing gives
+$C_{(s)} \le ((1-1/m)n + s + 1)\,w/k$; summing yields the claim.
+
+\emph{Lower bound.} In the rotation instance the $m$ jobs with
+residue $c$ become available exactly at slot $(m-1)n/m + c + 1$, so
+$m$ new jobs arrive per slot from $T_0$ on while stage~2 completes
+one per slot: it never starves after $T_0$, and completions are
+exactly $T_0 + s\,w/k$, summing to
+$n T_0 + n(n+1)w/(2k) = (\tfrac32 - \tfrac1m) n^2 w/k + O(n)$.
+Since no job is available before $T_0$, no downstream discipline
+does better than these completions term by term.
+\end{proof}
+
+The pattern of Remark~\ref{rem:dichotomy} thus persists in the
+flowtime currency---$3 - 2/m$ for any work-conserving downstream
+versus $3$ for a withholding one---with the same interpretation:
+withholding forfeits as much again as all upstream misalignment.
+
+%% ============================================================
+\section{No ceiling for weighted completion time}
+\label{sec:wct}
+
+\begin{proposition}[The weighted price is unbounded]
+\label{prop:wct}
+For every $B$ there is an instance and an unsynchronized
+team-sequential schedule whose weighted completion time exceeds $B$
+times the optimum.
+\end{proposition}
+
+\begin{proof}
+Put value $v$ on a single job $J$ of work $w$ and negligible value
+on the others. The synchronized schedule with $J$ first completes
+it at $2w/k$, so the optimum is at most
+$2vw/k + o(v)$. The construction of Theorem~\ref{thm:poa-full}
+applied to $J$ completes it at $2W/k$, giving weighted objective at
+least $2vW/k$. The ratio is $W/w + o(1)$, unbounded as the number
+of jobs grows.
+\end{proof}
+
+Schedule damage is capped at a factor of two
+(Theorem~\ref{thm:poa-full}); value damage has no cap, and it grows
+exactly with the concentration of value. Combined with
+Corollary~\ref{cor:fixed-order} this separates the two roles of the
+shared order: \emph{any} shared order is optimal for the date all
+work lands; a \emph{correct} (value-aware) shared order is what
+protects when value lands.
+
+%% ============================================================
+\section{Computational verification}
+\label{sec:verification}
+
+The constants above are exact at finite sizes, so they can be
+confronted with exhaustive enumeration. We use the
+39-configuration instance family of \citet{bowmanA}
+($n \le 5$ jobs, $m \in \{2,3\}$ stage-1 machines,
+$k \in \{2,3\}$ workers, symmetric, asymmetric, value-weighted and
+machine-heterogeneous works; about $4.0 \times 10^{6}$ schedules in
+total), with every combined schedule classified as synchronized or
+unsynchronized and, within the unsynchronized population, the
+downstream order classified as availability-consistent
+(work-conserving in the integer model) or re-ordered (withholding).
+The integer model forces balanced divisions exactly when $w_j = k$;
+in those configurations the fluid constants must be---and
+are---attained exactly.
+
+\begin{table}[h]
+\caption{Worst-case makespan price (per cent over the optimum) of
+the unsynchronized population, split by downstream discipline, on
+the division-forced configurations, against the finite-$n$ theory
+of Theorems~\ref{thm:poa-full} and~\ref{thm:poa-wc}.}
+\label{tab:split}
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Configuration & \multicolumn{2}{l}{Work-conserving} &
+\multicolumn{2}{l}{Withholding} \\
+ & observed & theory & observed & theory \\
+\midrule
+$n=3$, $m=2$ & $+25.0\%$ & $5/4$ & $+50.0\%$ & $6/4$ \\
+$n=4$, $m=2$ & $+40.0\%$ & $7/5$ & $+60.0\%$ & $8/5$ \\
+$n=5$, $m=2$ & $+33.3\%$ & $8/6$ & $+66.7\%$ & $10/6$ \\
+$n=3$, $m=3$ & $+50.0\%$ & coincide & $+50.0\%$ & $6/4$ \\
+$n=4$, $m=3$ & $+40.0\%$ & $7/5$ & $+60.0\%$ & $8/5$ \\
+$n=2$, any $m$ & $+33.3\%$ & $4/3$ & \multicolumn{2}{l}{class
+empty (forced)} \\
+\botrule
+\end{tabular}
+\end{table}
+
+Beyond the exact agreement of every entry, two structural
+predictions are reproduced: at $n = 3$, $m = 3$ the two downstream
+classes coincide, as they must once $m \ge n$ (the rotation
+construction then defeats every downstream discipline); and at
+$n = 2$ the withholding class is empty, as it must be
+(availabilities tie, so every downstream order is
+availability-consistent). The flowtime worst cases similarly match
+Theorems~\ref{thm:poa-flow} and~\ref{thm:poa-flow-wc} exactly
+where divisions are forced ($+100.0\% = (3n+1)/(n+3)$ at $n=5$;
+$+50.0\%$ for the work-conserving class, the rotation value).
+Configurations with division freedom exceed the balanced-split
+constants in both classes, quantifying how division badness stacks
+on top of ordering badness.
+
+Averages tell the operational story: across the full family, the
+mean makespan price of an unsynchronized schedule is $39.6\%$
+(per-configuration means $20.0$--$63.2\%$), the mean flowtime price
+$60.6\%$, and the mean weighted price $69.2\%$ (worst $+475.5\%$,
+under value skew $100{:}1{:}1$); on average across configurations,
+more than $99.5\%$ of unsynchronized schedules are strictly later
+than the optimum on every objective (no configuration falls below
+$95.6\%$). Within the unsynchronized population, conditioning
+on an availability-consistent downstream roughly halves the mean
+price (e.g.\ from $+53.1\%$ to $+26.3\%$ at $n=5$, $m=2$)---work
+conservation alone recovers about half the damage of upstream
+misalignment, before any upstream coordination.
+
+The two bracketing results are formalized in Lean~4 over the
+concrete machine model of \citet{bowmanA}: the universal lower
+bound $k\,C_{\max} \ge W + w_M$ for every job $M$
+(Theorem~\ref{thm:optimum}(a)), with stage~2 abstracted so that any
+physical execution satisfies the axioms; and the universal upper
+bound at the release-time interface behind
+Theorem~\ref{thm:poa-full}, together with computed witnesses for
+the smallest anti-aligned instance ($2W$ versus $W + w_{\max}$).
+Both developments contain no unproven steps. Code, enumeration
+outputs, and the Lean development are in the archived artifact (see
+Declarations).
+
+%% ============================================================
+\section{Discussion}
+\label{sec:discussion}
+
+Together with \citet{bowmanA,bowmanB}, the results complete a
+two-sided account of the shared order in this model. The dominance
+theorem says adopting it is free; this paper says declining it
+costs $40\%$ on average in the exhaustive family, at most a factor
+of two on the schedule (exactly), without limit on concentrated
+value---and that the two halves of the price have different owners.
+Upstream misalignment is worth $2 - 1/m$; everything beyond is the
+downstream stage's choice to hold capacity idle for a preferred
+job. For practice the asymmetry is the message: a downstream stage
+that simply keeps pulling whatever has arrived is protected by
+Theorem~\ref{thm:poa-wc} no matter how badly it orders; the
+behavior to eliminate is waiting---which is what enforcing a
+priority list inside a stage operationally means whenever the
+list's next item has not arrived. The stochastic results add that
+none of this depends on knowing the work: a fixed shared order is
+exactly optimal for the portfolio date under any randomness
+(Corollary~\ref{cor:fixed-order}), while protecting \emph{value}
+requires the order to be right
+(Proposition~\ref{prop:wct})---sharedness is free insurance,
+correctness buys value.
+
+Open problems. (i) The flowtime spacing arguments require a
+non-preemptive downstream; we conjecture the constants $3$ and
+$3 - 2/m$ survive preemption. (ii) The flowtime constants are
+proved for equal works; the general-works analogues should follow
+the same pattern. (iii) The expected price under \emph{random}
+(rather than adversarial) per-machine orders is strictly positive
+and empirically large ($39.6\%$ mean above); its exact asymptotics
+are open. (iv) Whether the value-ordered fixed permutation is
+expectation-optimal for weighted completion time under exchangeable
+works (the WSEPT analogue) is open. (v) The online version---jobs
+arriving over time, the shared order maintained by preemptive
+priority---is the natural continuation and the model closest to the
+motivating applications.
+
+%% ============================================================
+\section*{Declarations}
+
+\textbf{Funding.}
+This research did not receive any specific grant from funding
+agencies in the public, commercial, or not-for-profit sectors.
+
+\textbf{Competing interests.}
+The author declares no competing interests.
+
+\textbf{Author contributions.}
+The sole author conceived the work, developed the proofs, and wrote
+the manuscript.
+
+\textbf{Data availability.}
+The enumeration outputs supporting
+Section~\ref{sec:verification} are available in the repository
+below.
+
+\textbf{Code availability.}
+The simulation code, exhaustive-enumeration suite, and the Lean~4
+formalization are available at
+\url{https://github.com/ebowman/synchronization-paper-artifact}
+and archived at
+\url{https://doi.org/10.5281/zenodo.20075388}.
+
+\textbf{Generative AI disclosure.}
+AI-assisted tooling (Anthropic Claude) was used for literature
+search, drafting support, simulation code, and proof checking; all
+mathematical content was verified by the author, by exhaustive
+computational enumeration, and---where stated---by the Lean~4 proof
+assistant.
+
+\bibliography{price}
+
+\end{document}
